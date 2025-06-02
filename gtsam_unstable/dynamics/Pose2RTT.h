@@ -87,9 +87,9 @@ public:
   /// @{
 
   /** range between translations */
-  double range(const Pose2RTT& other,
-               OptionalJacobian<1,6> H1={},
-               OptionalJacobian<1,6> H2={}) const;
+  // double range(const Pose2RTT& other,
+  //              OptionalJacobian<1,6> H1={},
+  //              OptionalJacobian<1,6> H2={}) const;
   /// @}
 
   /// @name IMU-specific
@@ -97,9 +97,7 @@ public:
 
   /// Dynamics integrator for differential drive ground robots
   /// Always move from time 1 to time 2
-  Pose2RTT diffDriveDynamics(double lin_vel, double ang_vel, 
-      double min_lin_acc, double max_lin_acc, 
-      double min_ang_acc, double max_ang_acc, double dt) const;
+  Pose2RTT diffDriveDynamics(double lin_vel, double ang_vel, double dt) const;
 
   // /// Simulates flying robot with simple flight model
   // /// Integrates state x1 -> x2 given controls

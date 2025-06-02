@@ -16,11 +16,11 @@ using namespace std;
 // static const Vector kGravity = Vector::Unit(3,2)*9.81;
 
 /* ************************************************************************* */
-double bound(double a, double min, double max) {
-  if (a < min) return min;
-  else if (a > max) return max;
-  else return a;
-}
+// double bound(double a, double min, double max) {
+//   if (a < min) return min;
+//   else if (a > max) return max;
+//   else return a;
+// }
 
 /* ************************************************************************* */
 Pose2RTT::Pose2RTT(double yaw, double x, double y, 
@@ -59,9 +59,7 @@ void Pose2RTT::print(const string& s) const {
 }
 
 /* ************************************************************************* */
-Pose2RTT Pose2RTT::diffDriveDynamics(double lin_acc, double ang_acc, 
-    double min_lin_acc, double max_lin_acc, 
-    double min_ang_acc, double max_ang_acc, double dt) const {
+Pose2RTT Pose2RTT::diffDriveDynamics(double lin_acc, double ang_acc, double dt) const {
 
   // split out initial state
   const Rot2& r1 = R();
@@ -69,8 +67,8 @@ Pose2RTT Pose2RTT::diffDriveDynamics(double lin_acc, double ang_acc,
   const Twist3& v1 = twist();
 
   // Clipping
-  double lin_vel2 = v1(0) + bound(lin_acc*dt, min_lin_acc*dt, max_lin_acc*dt);
-  double ang_vel2 = v1(2) + bound(ang_acc*dt, min_ang_acc*dt, max_ang_acc*dt);
+  double lin_vel2 = v1(0) + lin_acc*dt;
+  double ang_vel2 = v1(2) + ang_acc*dt;
 
 
   double theta1 = r1.theta();
