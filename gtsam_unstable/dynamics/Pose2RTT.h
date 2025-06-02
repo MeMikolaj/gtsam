@@ -95,9 +95,11 @@ public:
   /// @name IMU-specific
   /// @{
 
-  /// Dynamics integrator for ground robots
+  /// Dynamics integrator for differential drive ground robots
   /// Always move from time 1 to time 2
-  Pose2RTT planarDynamics(double vel_rate, double heading_rate, double max_accel, double dt) const;
+  Pose2RTT diffDriveDynamics(double lin_vel, double ang_vel, 
+      double min_lin_acc, double max_lin_acc, 
+      double min_ang_acc, double max_ang_acc, double dt) const;
 
   // /// Simulates flying robot with simple flight model
   // /// Integrates state x1 -> x2 given controls
@@ -116,19 +118,19 @@ public:
   /// predict measurement and where Point2 for x2 should be, as a way
   /// of enforcing a velocity constraint
   /// This version splits out the rotation and velocity for x2
-  Point2 translationIntegration(const Rot2& r2, const Twist3& twist, double dt) const;
+  // Point2 translationIntegration(const Rot2& r2, const Twist3& twist, double dt) const;
 
   /// predict measurement and where Point2 for x2 should be, as a way
   /// of enforcing a velocity constraint
   /// This version takes a full Pose2RTT, but ignores the existing translation for x2
-  inline Point2 translationIntegration(const Pose2RTT& x2, double dt) const {
-    return translationIntegration(x2.rotation(), x2.twist(), dt);
-  }
+  // inline Point2 translationIntegration(const Pose2RTT& x2, double dt) const {
+  //   return translationIntegration(x2.rotation(), x2.twist(), dt);
+  // }
 
   /// @return a vector for Matlab compatibility
-  inline Vector translationIntegrationVec(const Pose2RTT& x2, double dt) const {
-    return translationIntegration(x2, dt);
-  }
+  // inline Vector translationIntegrationVec(const Pose2RTT& x2, double dt) const {
+  //   return translationIntegration(x2, dt);
+  // }
 
   /**
    * Apply transform to this pose, with optional derivatives
@@ -173,9 +175,9 @@ template<>
 struct traits<Pose2RTT> : public internal::LieGroup<Pose2RTT> {};
 
 // Define Range functor specializations that are used in RangeFactor
-template <typename A1, typename A2> struct Range;
+// template <typename A1, typename A2> struct Range;
 
-template<>
-struct Range<Pose2RTT, Pose2RTT> : HasRange<Pose2RTT, Pose2RTT, double> {};
+// template<>
+// struct Range<Pose2RTT, Pose2RTT> : HasRange<Pose2RTT, Pose2RTT, double> {};
 
 } // \namespace gtsam

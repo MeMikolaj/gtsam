@@ -13,7 +13,7 @@ namespace gtsam {
 
 using namespace std;
 
-static const Vector kGravity = Vector::Unit(3,2)*9.81;
+// static const Vector kGravity = Vector::Unit(3,2)*9.81;
 
 /* ************************************************************************* */
 double bound(double a, double min, double max) {
@@ -58,30 +58,45 @@ void Pose2RTT::print(const string& s) const {
   gtsam::print((Vector)twist(), "  V_x, V_y, W_z");
 }
 
-// I am here
 /* ************************************************************************* */
-Pose2RTT Pose2RTT::planarDynamics(double vel_rate, double heading_rate,
-    double max_accel, double dt) const {
+Pose2RTT Pose2RTT::diffDriveDynamics(double lin_acc, double ang_acc, 
+    double min_lin_acc, double max_lin_acc, 
+    double min_ang_acc, double max_ang_acc, double dt) const {
 
   // split out initial state
   const Rot2& r1 = R();
+  const Point2& t1 = t();
   const Twist3& v1 = twist();
 
-  // Update vehicle heading
-  Rot2 r2 = r1.retract((Vector(1) << heading_rate * dt).finished());
-  const double yaw2 = r2.theta();
+  // Clipping
+  double lin_vel2 = v1(0) + bound(lin_acc*dt, min_lin_acc*dt, max_lin_acc*dt);
+  double ang_vel2 = v1(2) + bound(ang_acc*dt, min_ang_acc*dt, max_ang_acc*dt);
 
-  // Update vehicle position
-  const double mag_v1 = v1.norm();
 
-  // FIXME: this doesn't account for direction in velocity bounds
-  double dv = bound(vel_rate - mag_v1, - (max_accel * dt), max_accel * dt);
-  double mag_v2 = mag_v1 + dv;
-  Twist3 v2 = mag_v2 * Twist3(cos(yaw2), sin(yaw2));
+  double theta1 = r1.theta();
+  double delta_theta = ang_vel2 * dt;
 
-  Point2 t2 = translationIntegration(r2, v2, dt);
+  Point2 delta_t;
+  if (fabs(ang_vel2) > 1e-6) {
+    // Circular arc integration
+    double radius = lin_vel2 / ang_vel2;
 
-  return Pose2RTT(r2, t2, v2);
+    double dx = radius * (sin(theta1 + delta_theta) - sin(theta1));
+    double dy = radius * (-cos(theta1 + delta_theta) + cos(theta1));
+
+    delta_t = Point2(dx, dy);
+  } else {
+    // Straight line approximation
+    double dx = lin_vel2 * dt * cos(theta1);
+    double dy = lin_vel2 * dt * sin(theta1);
+    delta_t = Point2(dx, dy);
+  }
+
+  // New pose
+  Rot2 r2 = r1.retract(Vector1(delta_theta));
+  Point2 t2 = t1 + delta_t;
+
+  return Pose2RTT(r2, t2, Twist3(lin_vel2, 0.0, ang_vel2));
 }
 
 /* ************************************************************************* */
@@ -161,29 +176,43 @@ Pose2RTT Pose2RTT::planarDynamics(double vel_rate, double heading_rate,
 // }
 
 /* ************************************************************************* */
-Point2 Pose2RTT::translationIntegration(const Rot2& r2, const Twist3& v2, double dt) const {
-  // predict point for constraint
-  // NOTE: uses simple Euler approach for prediction
-  Point2 pred_t2 = t() + Point2(v2 * dt);
-  return pred_t2;
-}
+// Point2 Pose2RTT::translationIntegration(const Rot2& r2, const Twist3& twist, double dt) const {
+//   // predict point for constraint
+//   // NOTE: uses simple Euler approach for prediction - without angular velocity
+
+//   // Extract local linear velocity (Vx, Vy)
+//   Vector2 v_local = twist.head<2>();
+//   // Rotate to global frame using Rot2
+//   Vector2 v_global = r2.rotate(v_local);
+
+//   Point2 pred_t2 = t() + dt * v_global;
+//   return pred_t2;
+// }
 
 /* ************************************************************************* */
-double Pose2RTT::range(const Pose2RTT& other,
-    OptionalJacobian<1,5> H1, OptionalJacobian<1,5> H2) const {
-  Matrix23 D_t1_pose, D_t2_other;
-  const Point2 t1 = pose().translation(H1 ? &D_t1_pose : 0);
-  const Point2 t2 = other.pose().translation(H2 ? &D_t2_other : 0);
-  Matrix12 D_d_t1, D_d_t2;
-  double d = distance2(t1, t2, H1 ? &D_d_t1 : 0, H2 ? &D_d_t2 : 0);
-  if (H1) *H1 << D_d_t1 * D_t1_pose, 0,0;
-  if (H2) *H2 << D_d_t2 * D_t2_other, 0,0;
-  return d;
-}
+// double Pose2RTT::range(const Pose2RTT& other,
+//     OptionalJacobian<1,6> H1, OptionalJacobian<1,6> H2) const {
+//   Matrix23 D_t1_pose, D_t2_other;
+//   const Point2 t1 = pose().translation(H1 ? &D_t1_pose : 0);
+//   const Point2 t2 = other.pose().translation(H2 ? &D_t2_other : 0);
+//   Matrix13 D_d_t1, D_d_t2;
+//   double d = distance2(t1, t2, H1 ? &D_d_t1 : 0, H2 ? &D_d_t2 : 0);
+//   if (H1) {
+//     H1->setZero(); // 1x6
+//     H1->block<1,3>(0,0) = D_d_t1 * D_t1_pose;
+//     // d/dTwist = 0
+//   }
+//   if (H2) {
+//     H2->setZero(); // 1x6
+//     H2->block<1,3>(0,0) = D_d_t2 * D_t2_other;  // d/dPose
+//     // d/dTwist = 0
+//   }
+//   return d;
+// }
 
 /* ************************************************************************* */
 Pose2RTT Pose2RTT::transformed_from(const Pose2& trans, ChartJacobian Dglobal,
-    OptionalJacobian<5, 3> Dtrans) const {
+    OptionalJacobian<6, 3> Dtrans) const {
 
   // Pose2 transform is just compose
   Matrix3 D_newpose_trans, D_newpose_pose;
@@ -192,12 +221,17 @@ Pose2RTT Pose2RTT::transformed_from(const Pose2& trans, ChartJacobian Dglobal,
   // Note that we rotate the velocity
   Matrix21 D_newvel_R;
   Matrix2 D_newvel_v;
-  Twist3 newvel = trans.rotation().rotate(Point2(velocity()), D_newvel_R, D_newvel_v);
+  Vector2 rotated_vel = trans.rotation().rotate(Point2(twist().head<2>()), D_newvel_R, D_newvel_v);
+  
+  Twist3 newtwist;
+  newtwist.head<2>() = rotated_vel;
+  newtwist(2) = twist()(2);
 
   if (Dglobal) {
     Dglobal->setZero();
     Dglobal->topLeftCorner<3,3>() = D_newpose_pose;
-    Dglobal->bottomRightCorner<2,2>() = D_newvel_v;
+    Dglobal->block<2,2>(3,3) = D_newvel_v;
+    (*Dglobal)(5,5) = 1.0; // dwz_new / dwz_old
   }
 
   if (Dtrans) {
@@ -205,7 +239,7 @@ Pose2RTT Pose2RTT::transformed_from(const Pose2& trans, ChartJacobian Dglobal,
     Dtrans->topLeftCorner<3,3>() = D_newpose_trans;
     Dtrans->block<2,1>(3,2) = D_newvel_R;
   }
-  return Pose2RTT(newpose, newvel);
+  return Pose2RTT(newpose, newtwist);
 }
 
 /* ************************************************************************* */
