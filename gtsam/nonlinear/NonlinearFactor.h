@@ -320,7 +320,7 @@ public:
 
 /* ************************************************************************* */
 namespace detail {
-/** Convenience base class to add aliases `X1`, `X2`, ..., `X6` -> ValueType<N>.
+/** Convenience base class to add aliases `X1`, `X2`, ..., `X7` -> ValueType<N>.
  * Usage example:
  * ```
  * class MyFactor : public NoiseModelFactorN<Pose3, Point3>,
@@ -366,14 +366,25 @@ struct NoiseModelFactorAliases<T1, T2, T3, T4, T5> {
   using X5 = T5;
 };
 template <typename T1, typename T2, typename T3, typename T4, typename T5,
-          typename T6, typename... TExtra>
-struct NoiseModelFactorAliases<T1, T2, T3, T4, T5, T6, TExtra...> {
+          typename T6>
+struct NoiseModelFactorAliases<T1, T2, T3, T4, T5, T6> {
   using X1 = T1;
   using X2 = T2;
   using X3 = T3;
   using X4 = T4;
   using X5 = T5;
   using X6 = T6;
+};
+template <typename T1, typename T2, typename T3, typename T4, typename T5,
+          typename T6, typename T7, typename... TExtra>
+struct NoiseModelFactorAliases<T1, T2, T3, T4, T5, T6, T7, TExtra...> {
+  using X1 = T1;
+  using X2 = T2;
+  using X3 = T3;
+  using X4 = T4;
+  using X5 = T5;
+  using X6 = T6;
+  using X7 = T7;
 };
 }  // namespace detail
 
@@ -759,6 +770,11 @@ protected:
     static_assert(I <= N, "Index out of bounds");
     return key<6>();
   }
+  template <int I = 7>
+  inline Key key7() const {
+    static_assert(I <= N, "Index out of bounds");
+    return key<7>();
+  }
 
   /// @}
 
@@ -770,5 +786,6 @@ protected:
 #define NoiseModelFactor4 NoiseModelFactorN
 #define NoiseModelFactor5 NoiseModelFactorN
 #define NoiseModelFactor6 NoiseModelFactorN
+#define NoiseModelFactor7 NoiseModelFactorN
 
 }  // namespace gtsam
